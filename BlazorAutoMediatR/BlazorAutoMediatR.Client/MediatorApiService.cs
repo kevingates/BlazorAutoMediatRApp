@@ -13,19 +13,70 @@ namespace BlazorAutoMediatR.Client
 			_httpClient = clientFactory.CreateClient("MyHttpClient");
 		}
 
-		public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
-		{
-			var type = request.GetType();
-			var apiRequest = new ApiRequest() { TypeFullName = type.FullName, Request = (IRequest<dynamic>)request };
-			var payload = new { Type = type.FullName, Request = request };
-			var requestContent = new StringContent( JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-			var response = await _httpClient.PostAsync("Mediator", requestContent, cancellationToken);
+        public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+        {
+            var type = request.GetType();
+            var nameWithoutPeriods = type.FullName?.Replace(".", "_");
+            var requestContent = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
 
-			response.EnsureSuccessStatusCode();
+            // Include the requestName in the URL
+            var response = await _httpClient.PostAsync($"MediatR/{nameWithoutPeriods}", requestContent, cancellationToken);
 
-			var responseContent = await response.Content.ReadAsStringAsync();
-			return JsonSerializer.Deserialize<TResponse>(responseContent);
-		}
-	}
+            response.EnsureSuccessStatusCode();
 
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+            return JsonSerializer.Deserialize<TResponse>(responseContent, options);
+        }
+    }
+    /*
+     * 
+     * 
+     * OR
+     * public class ApiService
+{
+    private readonly HttpClient _httpClient;
+
+    public ApiService(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request)
+    {
+        var requestType = request.GetType();
+        var namespaceParts = requestType.Namespace?.Split('.') ?? Array.Empty<string>();
+
+        if (namespaceParts.Length < 3 || !namespaceParts[1].EndsWith("Core"))
+        {
+            throw new ArgumentException("Request must be a command or query from a project with a Core namespace", nameof(request));
+        }
+
+        var projectName = namespaceParts[0];
+        var endpointName = requestType.Name;
+        var route = $"api/{projectName}/{endpointName}";
+
+        var requestContent = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
+        var response = await _httpClient.PostAsync(route, requestContent);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"Request to {route} failed with status code {response.StatusCode}");
+        }
+
+        var responseContent = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<TResponse>(responseContent);
+    }
+}
+     * 
+     * 
+     * 
+     * 
+     * 
+     * 
+     * 
+     */
 }

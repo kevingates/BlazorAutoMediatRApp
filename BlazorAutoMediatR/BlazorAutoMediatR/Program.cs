@@ -21,7 +21,7 @@ builder.Services.AddSingleton<IDataAccess, DemoDataAccess>();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<DomainLibraryMediatREntryPoint>());
 builder.Services.AddScoped<IMediatorService, MediatorService>();
 
-builder.Services.AddMediatREndpoints();
+//builder.Services.AddMediatREndpoints();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

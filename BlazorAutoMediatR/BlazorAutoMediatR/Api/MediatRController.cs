@@ -1,45 +1,62 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
-
+using System.Text.Json;
 namespace BlazorAutoMediatR.Api
 {
-	[ApiController]
-	[Route("api/[controller]")]
-	public class MediatRController<TRequest, TResponse> : ControllerBase
-	where TRequest : IRequest<TResponse>
-	{
-		private readonly IMediator _mediator;
-		private readonly ILogger<MediatRController<TRequest, TResponse>> _logger;
+    [ApiController]
+    [Route("api/[controller]")]
+    public class MediatRController : ControllerBase
+    {
 
-		public MediatRController(IMediator mediator, ILogger<MediatRController<TRequest, TResponse>> logger)
-		{
-			_mediator = mediator;
-			_logger = logger;
-		}
+        private static readonly Dictionary<string, Type> _requestTypes;
+        private readonly IMediator _mediator;
 
-		[HttpPost]
-		public async Task<IActionResult> PostAsync([FromBody] TRequest request)
-		{
-			try
-			{
-				// Validate request using data annotations
-				var validationContext = new ValidationContext(request);
-				var validationResults = new List<ValidationResult>();
-				if (!Validator.TryValidateObject(request, validationContext, validationResults, true))
-				{
-					return BadRequest(validationResults.Select(v => v.ErrorMessage));
-				}
+        static MediatRController()
+        {
+            _requestTypes = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .Where(t => t.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>)))
+                .ToDictionary(t => t.FullName!.Replace(".","_"), t => t);
+        }
 
-				var response = await _mediator.Send(request);
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "An error occurred while processing the request.");
-				return Problem("An error occurred while processing the request.", statusCode: 500);
-			}
-		}
-	}
+        public MediatRController(IMediator mediator)
+        {
+            _mediator = mediator;
+        }
+
+        [HttpPost("{requestName}")]
+        public async Task<IActionResult> HandleRequest(string requestName, [FromBody] object request)
+        {
+
+            if (!_requestTypes.TryGetValue(requestName, out var requestType))
+            {
+                return NotFound("Unknown request type.");
+            }
+            if(request is null)
+            {
+                return BadRequest("Request object is null.");
+            }
+
+             
+            var requestInstance = JsonSerializer.Deserialize(request.ToString()!, requestType);
+            if (requestInstance is null)
+            {
+                return Problem("Failed to deserialize request object.");
+            }
+
+            var validationContext = new ValidationContext(requestInstance);
+            var validationResults = new List<ValidationResult>();
+            bool isValid = Validator.TryValidateObject(requestInstance, validationContext, validationResults, true);
+
+            if (!isValid)
+            {
+                return BadRequest(validationResults.Select(r => r.ErrorMessage));
+            }
+
+            var response = await _mediator.Send(requestInstance);
+            return Ok(response);
+        }
+    }
 
 }

@@ -3,6 +3,9 @@
 <PageTitle>Home</PageTitle>
 
 <h1>Hello, world!</h1>
+<h1>Testing @(OperatingSystem.IsBrowser() ? "Wasm" : "Server")</h1>
+<p>Render mode: @renderMode</p>
+
 
 Welcome to your new app.
 
@@ -12,13 +15,58 @@ Welcome to your new app.
 		<li>@p.FirstName @p.LastName</li>
 	}
 </ul>
+<EditForm Model="newPerson" OnSubmit="HandleSubmit">
+	<InputText @bind-Value="newPerson.FirstName" />
+    <InputText @bind-Value="newPerson.LastName" />
+    <button type="submit" class="btn btn-primary">Add</button>
+</EditForm>
 
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+	<h2>Error:</h2>
+	<p>@errorMessage</p>
+}
 @code {
+
+	string errorMessage = string.Empty;
+	private string renderMode = "SSR";
 
 	List<PersonModel> people = new();
 
+	PersonModel newPerson = new();
+
+	async Task HandleSubmit()
+	{
+		try
+		{
+			await _mediator.Send(new InsertPersonCommand { FirstName = newPerson.FirstName, LastName = newPerson.LastName });
+			newPerson = new();
+		}
+		catch (Exception ex)
+		{
+			errorMessage = ex.Message;
+		}
+	}
+
 	protected override async Task OnInitializedAsync()
 	{
-		people = await _mediator.Send(new GetPersonListQuery());
+		try
+		{
+			people = await _mediator.Send(new GetPersonListQuery());
+		}
+		catch (Exception ex)
+		{
+			errorMessage = ex.Message;
+		}
+	}
+
+
+	protected override void OnAfterRender(bool firstRender)
+	{
+		if (firstRender)
+		{
+			renderMode = OperatingSystem.IsBrowser() ? "WebAssembly" : "Server";
+			StateHasChanged();
+		}
 	}
 }
