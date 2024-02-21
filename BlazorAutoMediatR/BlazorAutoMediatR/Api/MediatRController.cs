@@ -2,61 +2,76 @@
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+
 namespace BlazorAutoMediatR.Api
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class MediatRController : ControllerBase
-    {
+	[ApiController]
+	[Route("api/[controller]")]
+	public class MediatRController : ControllerBase
+	{
+		private static readonly Dictionary<string, (Type Type, bool IsRequestOfT)> _requestTypes;
+		private readonly IMediator _mediator;
 
-        private static readonly Dictionary<string, Type> _requestTypes;
-        private readonly IMediator _mediator;
+		static MediatRController()
+		{
+			_requestTypes = AppDomain.CurrentDomain.GetAssemblies()
+				.SelectMany(a => a.GetTypes())
+				.Where(t => t.GetInterfaces().Any(i => i == typeof(IRequest) || (i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>))))
+				.ToDictionary(
+					t => t.FullName!.Replace(".", "_"),
+					t => (
+						Type: t,
+						IsRequestOfT: t.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>))
+					)
+				);
+		}
 
-        static MediatRController()
-        {
-            _requestTypes = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a => a.GetTypes())
-                .Where(t => t.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>)))
-                .ToDictionary(t => t.FullName!.Replace(".","_"), t => t);
-        }
+		public MediatRController(IMediator mediator)
+		{
+			_mediator = mediator;
+		}
 
-        public MediatRController(IMediator mediator)
-        {
-            _mediator = mediator;
-        }
+		[HttpPost("{requestName}")]
+		public async Task<IActionResult> HandleRequest(string requestName, [FromBody] JsonElement requestJson)
+		{
+			if (!_requestTypes.TryGetValue(requestName, out var requestTypeInfo))
+			{
+				return NotFound("Unknown request type.");
+			}
 
-        [HttpPost("{requestName}")]
-        public async Task<IActionResult> HandleRequest(string requestName, [FromBody] object request)
-        {
+			var (requestType, isRequestOfT) = requestTypeInfo;
 
-            if (!_requestTypes.TryGetValue(requestName, out var requestType))
-            {
-                return NotFound("Unknown request type.");
-            }
-            if(request is null)
-            {
-                return BadRequest("Request object is null.");
-            }
+			var requestJsonString = requestJson.GetRawText();
+			var options = new JsonSerializerOptions
+			{
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+			};
 
-             
-            var requestInstance = JsonSerializer.Deserialize(request.ToString()!, requestType);
-            if (requestInstance is null)
-            {
-                return Problem("Failed to deserialize request object.");
-            }
+			var requestInstance = JsonSerializer.Deserialize(requestJsonString, requestType, options);
+			if (requestInstance is null)
+			{
+				return Problem("Failed to deserialize request object.");
+			}
 
-            var validationContext = new ValidationContext(requestInstance);
-            var validationResults = new List<ValidationResult>();
-            bool isValid = Validator.TryValidateObject(requestInstance, validationContext, validationResults, true);
+			var validationContext = new ValidationContext(requestInstance);
+			var validationResults = new List<ValidationResult>();
+			bool isValid = Validator.TryValidateObject(requestInstance, validationContext, validationResults, true);
 
-            if (!isValid)
-            {
-                return BadRequest(validationResults.Select(r => r.ErrorMessage));
-            }
+			if (!isValid)
+			{
+				return BadRequest(validationResults.Select(r => r.ErrorMessage));
+			}
 
-            var response = await _mediator.Send(requestInstance);
-            return Ok(response);
-        }
-    }
-
+			if (isRequestOfT)
+			{
+				var response = await _mediator.Send(requestInstance);
+				return Ok(response);
+			}
+			else
+			{
+				await _mediator.Send((IRequest)requestInstance);
+				return Ok();
+			}
+		}
+	}
 }

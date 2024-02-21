@@ -16,6 +16,8 @@ Welcome to your new app.
 	}
 </ul>
 <EditForm Model="newPerson" OnSubmit="HandleSubmit">
+	<DataAnnotationsValidator />
+	<ValidationSummary />
 	<InputText @bind-Value="newPerson.FirstName" />
     <InputText @bind-Value="newPerson.LastName" />
     <button type="submit" class="btn btn-primary">Add</button>
@@ -33,13 +35,14 @@ Welcome to your new app.
 
 	List<PersonModel> people = new();
 
-	PersonModel newPerson = new();
+	InsertPersonCommand newPerson = new();
 
 	async Task HandleSubmit()
 	{
 		try
 		{
 			await _mediator.Send(new InsertPersonCommand { FirstName = newPerson.FirstName, LastName = newPerson.LastName });
+			people = await _mediator.Send(new GetPersonListQuery());
 			newPerson = new();
 		}
 		catch (Exception ex)

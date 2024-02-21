@@ -1,7 +1,8 @@
 ﻿using Domain.Core;
 using MediatR;
+using Newtonsoft.Json.Serialization;
+using Newtonsoft.Json;
 using System.Text;
-using System.Text.Json;
 namespace BlazorAutoMediatR.Client
 {
 	public class MediatorApiService : IMediatorService
@@ -13,25 +14,29 @@ namespace BlazorAutoMediatR.Client
 			_httpClient = clientFactory.CreateClient("MyHttpClient");
 		}
 
-        public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
-        {
-            var type = request.GetType();
-            var nameWithoutPeriods = type.FullName?.Replace(".", "_");
-            var requestContent = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
+		public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+		{
+			var type = request.GetType();
+			var nameWithoutPeriods = type.FullName?.Replace(".", "_");
+			var serializedRequest = JsonConvert.SerializeObject(request, new JsonSerializerSettings
+			{
+				ContractResolver = new CamelCasePropertyNamesContractResolver()
+			});
+			var requestContent = new StringContent(serializedRequest, Encoding.UTF8, "application/json");
 
-            // Include the requestName in the URL
-            var response = await _httpClient.PostAsync($"MediatR/{nameWithoutPeriods}", requestContent, cancellationToken);
+			// Log or print the serialized request
+			Console.WriteLine(serializedRequest);
 
-            response.EnsureSuccessStatusCode();
+			// Include the requestName in the URL
+			var response = await _httpClient.PostAsync($"MediatR/{nameWithoutPeriods}", requestContent, cancellationToken);
 
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            };
-            return JsonSerializer.Deserialize<TResponse>(responseContent, options);
-        }
-    }
+			response.EnsureSuccessStatusCode();
+
+			var responseContent = await response.Content.ReadAsStringAsync();
+
+			return JsonConvert.DeserializeObject<TResponse>(responseContent);
+		}
+	}
     /*
      * 
      * 

@@ -11,8 +11,10 @@ namespace Domain.Core.Commands
     public class InsertPersonCommand : IRequest<PersonModel>
     {
         [Required]
+        [MinLength(length: 2)]
         public string FirstName { get; set; }
         [Required]
-        public string LastName { get; set; }
+		[MinLength(length: 2)]
+		public string LastName { get; set; }
     }
 }
