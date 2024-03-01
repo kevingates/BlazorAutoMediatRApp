@@ -20,7 +20,24 @@ namespace Domain.Handlers
 		}
         public Task<List<PersonModel>> Handle(GetPersonListQuery request, CancellationToken cancellationToken)
 		{
-			return Task.FromResult(data.GetPeople());
+			return Task.FromResult(data.GetAllPeople());
+
+			/*
+			 * DB CONTEXT VERSION
+			 * var result = _dbContext.Subscribers.Where(x => x.Id == request.Id).ToList();
+			 * return result.Select(x => new SubscriberModel(x)).ToList();
+			 * 
+			 * 
+			 * 
+			 * REPO VERSION
+			 * var filter = new Filter<Subscriber>();
+			 * filter.Where(x => x.Id == request.Id);
+			 * if (is not null)
+			 * 
+			 * var result = await _subscriberRepository.Get(filter);
+			 * return result.ToList().Select(x=> new SubscriberModel(x)).ToList();
+			 * 
+			 */
 		}
 	}
 }

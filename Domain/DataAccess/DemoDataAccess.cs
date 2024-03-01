@@ -18,7 +18,7 @@ namespace Domain.DataAccess
 
 		}
 
-		public List<PersonModel> GetPeople()
+		public List<PersonModel> GetAllPeople()
 		{
 			return people;
 		}
@@ -28,7 +28,34 @@ namespace Domain.DataAccess
 			PersonModel person = new PersonModel { FirstName = firstName, LastName = lastName };
 			person.Id = people.Max(x => x.Id) + 1;
 			people.Add(person);
+			people.Sort((x, y) => x.Id.CompareTo(y.Id));
 			return person;
+		}
+
+		public PersonModel GetPerson(int id)
+		{
+			return people.Where(x => x.Id == id).FirstOrDefault();
+		}
+
+		public void DeletePerson(int id)
+		{
+			people.Remove(people.Where(x => x.Id == id).FirstOrDefault());
+		}
+
+		public PersonModel UpdatePerson(PersonModel person)
+		{
+			var p = people.Where(x => x.Id == person.Id).FirstOrDefault();
+			people.Remove(p);
+			p.FirstName = person.FirstName;
+			p.LastName = person.LastName;
+			people.Add(p);
+			people.Sort((x, y) => x.Id.CompareTo(y.Id));
+			return p;
+		}
+
+		public List<PersonModel> GetPeople(string filter)
+		{
+			return people.Where(x => x.FirstName.Contains(filter) || x.LastName.Contains(filter)).ToList();
 		}
 	}
 }

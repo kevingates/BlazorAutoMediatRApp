@@ -4,7 +4,9 @@ using BlazorAutoMediatR.Components;
 using Domain;
 using Domain.Core;
 using Domain.DataAccess;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
+using BlazorAutoMediatR.MediatRPipelines;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,11 +16,14 @@ builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
 builder.Services.AddControllers();
-
-
+builder.Services.AddAuthorizationPolicies();
+builder.Services.AddHttpContextAccessor();
 // Demo Data. Otherwise never use Singleton
 builder.Services.AddSingleton<IDataAccess, DemoDataAccess>();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<DomainLibraryMediatREntryPoint>());
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, DefaultAuthorizationPolicyProvider>();
+builder.Services.AddSingleton<IAuthorizationService, DefaultAuthorizationService>();
+builder.Services.AddMediatRPipelines();
 builder.Services.AddScoped<IMediatorService, MediatorService>();
 
 //builder.Services.AddMediatREndpoints();
@@ -37,7 +42,9 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseWebAssemblyDebugging();
+	app.UseMiddleware<TestAuthMiddleware>(); // Add the test auth middleware
+
+	app.UseWebAssemblyDebugging();
 
 	app.UseSwagger();
 	app.UseSwaggerUI(c =>

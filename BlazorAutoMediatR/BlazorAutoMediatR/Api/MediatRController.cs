@@ -1,11 +1,12 @@
-﻿using MediatR;
+﻿using BlazorAutoMediatR.MediatRPipelines.CustomExceptions;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
 namespace BlazorAutoMediatR.Api
 {
-	[ApiController]
+    [ApiController]
 	[Route("api/[controller]")]
 	public class MediatRController : ControllerBase
 	{
@@ -34,43 +35,58 @@ namespace BlazorAutoMediatR.Api
 		[HttpPost("{requestName}")]
 		public async Task<IActionResult> HandleRequest(string requestName, [FromBody] JsonElement requestJson)
 		{
-			if (!_requestTypes.TryGetValue(requestName, out var requestTypeInfo))
+			try
 			{
-				return NotFound("Unknown request type.");
+				if (!_requestTypes.TryGetValue(requestName, out var requestTypeInfo))
+				{
+					return NotFound("Unknown request type.");
+				}
+
+				var (requestType, isRequestOfT) = requestTypeInfo;
+
+				var requestJsonString = requestJson.GetRawText();
+				var options = new JsonSerializerOptions
+				{
+					PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+				};
+
+				var requestInstance = JsonSerializer.Deserialize(requestJsonString, requestType, options);
+				if (requestInstance is null)
+				{
+					return Problem("Failed to deserialize request object.");
+				}
+
+
+				try
+				{
+					if (isRequestOfT)
+					{
+						var response = await _mediator.Send(requestInstance);
+						return Ok(response);
+					}
+					else
+					{
+						await _mediator.Send((IRequest)requestInstance);
+						return Ok();
+					}
+				}
+				catch (AuthorizationException ex)
+				{
+					return Forbid(ex.Message);
+				}
+				catch (ModelValidationException ex)
+				{
+					return BadRequest(ex.ValidationResults);
+				}
+				catch (Exception ex)
+				{
+					return Problem(ex.Message);
+				}
 			}
-
-			var (requestType, isRequestOfT) = requestTypeInfo;
-
-			var requestJsonString = requestJson.GetRawText();
-			var options = new JsonSerializerOptions
+			catch (Exception ex)
 			{
-				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-			};
 
-			var requestInstance = JsonSerializer.Deserialize(requestJsonString, requestType, options);
-			if (requestInstance is null)
-			{
-				return Problem("Failed to deserialize request object.");
-			}
-
-			var validationContext = new ValidationContext(requestInstance);
-			var validationResults = new List<ValidationResult>();
-			bool isValid = Validator.TryValidateObject(requestInstance, validationContext, validationResults, true);
-
-			if (!isValid)
-			{
-				return BadRequest(validationResults.Select(r => r.ErrorMessage));
-			}
-
-			if (isRequestOfT)
-			{
-				var response = await _mediator.Send(requestInstance);
-				return Ok(response);
-			}
-			else
-			{
-				await _mediator.Send((IRequest)requestInstance);
-				return Ok();
+				return Problem(ex.Message);
 			}
 		}
 	}

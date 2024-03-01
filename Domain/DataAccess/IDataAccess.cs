@@ -4,7 +4,11 @@ namespace Domain.DataAccess
 {
 	public interface IDataAccess
 	{
-		List<PersonModel> GetPeople();
+		void DeletePerson(int id);
+		List<PersonModel> GetAllPeople();
+		List<PersonModel> GetPeople(string filter);
+		PersonModel GetPerson(int id);
 		PersonModel InsertPerson(string firstName, string lastName);
+		PersonModel UpdatePerson(PersonModel person);
 	}
 }

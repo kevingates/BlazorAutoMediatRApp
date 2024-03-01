@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -8,6 +9,7 @@ using System.Threading.Tasks;
 
 namespace Domain.Core.Commands
 {
+    [Authorize(Policy = "CEO")]
     public class InsertPersonCommand : IRequest<PersonModel>
     {
         [Required]

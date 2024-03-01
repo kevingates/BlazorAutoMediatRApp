@@ -26,6 +26,7 @@ namespace Domain.Handlers
 
 			/*
 			 * _dbContext.People.Add(new Person { FirstName = request.FirstName, LastName = request.LastName });
+			 * _dbContext.People.Where(x => x.FirstName == request.FirstName && x.LastName == request.LastName).FirstOrDefault().Include(x => x.Addresses).ToList().ThenInclude(x => x.AddressType).Select(x => new PersonModel(x)).FirstOrDefault();
 			 * _dbContext.SaveChanges();
 			 * 
 			 */
