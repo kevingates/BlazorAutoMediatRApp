@@ -10,7 +10,9 @@ using System.Threading.Tasks;
 namespace Domain.Core.Commands
 {
     [Authorize(Policy = "CEO")]
-    public class InsertPersonCommand : IRequest<PersonModel>
+	[Authorize(Policy = "Admin")]
+	[Authorize(Policy = "Shrek")]
+	public class InsertPersonCommand : IRequest<PersonModel>
     {
         [Required]
         [MinLength(length: 2)]

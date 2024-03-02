@@ -11,6 +11,9 @@
 
 				options.AddPolicy("CEO", policy =>
 					policy.RequireRole("CEO"));
+
+				options.AddPolicy("Shrek", policy =>
+					policy.RequireRole("Shrek"));
 			});
 		}
 	}

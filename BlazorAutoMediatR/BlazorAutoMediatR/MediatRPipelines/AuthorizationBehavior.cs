@@ -29,15 +29,23 @@ namespace BlazorAutoMediatR.MediatRPipelines
 				var user = httpContext.User;
 
 				var authorizeAttributes = request.GetType().GetCustomAttributes<AuthorizeAttribute>(true);
-
+				if ( authorizeAttributes.Count() == 0 )
+				{
+					return await next();
+				}
+				bool authorized = false;
 				foreach (var attribute in authorizeAttributes)
 				{
 					var authorizationResult = await _authorizationService.AuthorizeAsync(user, attribute.Policy);
-					if (!authorizationResult.Succeeded)
+					if (authorizationResult.Succeeded)
 					{
-						// User is not authorized, return default response
-						throw new AuthorizationException("User is not authorized to perform this action.");
+						authorized = true;
+						break;
 					}
+				}
+				if (authorized is false)
+				{
+					throw new AuthorizationException("User is not authorized to perform this action.");
 				}
 			}
 			else
