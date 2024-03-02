@@ -30,16 +30,8 @@ namespace BlazorAutoMediatR.Client
 			// Include the requestName in the URL
 			var response = await _httpClient.PostAsync($"MediatR/{nameWithoutPeriods}", requestContent, cancellationToken);
 
-            try
-            {
-                response.EnsureSuccessStatusCode();
+			response.EnsureSuccessStatusCode();
 
-            }
-            catch (Exception ex)
-            {
-
-                throw;
-            }
 			var responseContent = await response.Content.ReadAsStringAsync();
 
 			return JsonConvert.DeserializeObject<TResponse>(responseContent);

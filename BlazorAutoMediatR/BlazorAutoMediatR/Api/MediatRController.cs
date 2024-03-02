@@ -72,8 +72,10 @@ namespace BlazorAutoMediatR.Api
 				}
 				catch (AuthorizationException ex)
 				{
-					return Forbid(ex.Message);
-				}
+					// Can't use Forbid unless authentication scheme is established:
+					// https://stackoverflow.com/questions/44597099/asp-net-core-giving-me-code-500-on-forbid
+					return StatusCode(403, ex.Message);
+                }
 				catch (ModelValidationException ex)
 				{
 					return BadRequest(ex.ValidationResults);
@@ -85,7 +87,6 @@ namespace BlazorAutoMediatR.Api
 			}
 			catch (Exception ex)
 			{
-
 				return Problem(ex.Message);
 			}
 		}

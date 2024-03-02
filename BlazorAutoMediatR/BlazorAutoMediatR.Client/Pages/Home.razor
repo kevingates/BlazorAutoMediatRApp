@@ -26,7 +26,7 @@ Welcome to your new app.
 @if (!string.IsNullOrEmpty(errorMessage))
 {
 	<h2>Error:</h2>
-	<p>@((MarkupString)errorMessage)</p>
+	<p>@errorMessage</p>
 }
 @code {
 
@@ -47,26 +47,7 @@ Welcome to your new app.
 		}
 		catch (Exception ex)
 		{
-			errorMessage = string.IsNullOrWhiteSpace(errorMessage) ? ex.Message : $"<br />{ex.Message}";
-			Console.WriteLine("_________________________________________");
-			Console.WriteLine("_________________________________________");
-
-			Console.WriteLine("_________________________________________");
-			Console.WriteLine("_________________________________________");
-
-			Console.WriteLine("_________________________________________");
-			Console.WriteLine("_________________________________________");
-
-			Console.WriteLine(ex.Message);
-
-			Console.WriteLine("_________________________________________");
-			Console.WriteLine("_________________________________________");
-
-			Console.WriteLine("_________________________________________");
-			Console.WriteLine("_________________________________________");
-
-			Console.WriteLine("_________________________________________");
-			Console.WriteLine("_________________________________________");
+			errorMessage = ex.Message;
 
 		}
 	}
